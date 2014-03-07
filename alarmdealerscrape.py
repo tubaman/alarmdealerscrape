@@ -3,6 +3,8 @@ import logging
 import sys
 import netrc
 import csv
+from urlparse import urlunsplit
+from urllib import urlencode
 
 import requests
 from bs4 import BeautifulSoup
@@ -11,17 +13,33 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
+DOMAIN = 'alarmdealer.com'
+
 def get_credentials():
-    auth = netrc.netrc().authenticators('alarmdealer.com')
+    auth = netrc.netrc().authenticators(DOMAIN)
     username, account, password = auth
     return username, password
 
 
+def get_url(mod, action):
+    """Generate a URL given the query params
+
+    ex:
+    >>> get_url('auth', 'login')
+    'http://alarmdealer.com/index.php?action=login&mod=auth'
+
+    """
+    query = urlencode({'mod': mod, 'action': action})
+    parts = ('http', DOMAIN, 'index.php', query, '')
+    url = urlunsplit(parts)
+    return url
+
+
 def login(session, username, password):
-    url = "http://alarmdealer.com/index.php?mod=auth&action=login"
+    url = get_url('auth', 'login')
     r = session.get(url)
     assert "Customer Login" in r.text
-    url = "http://alarmdealer.com/index.php?mod=auth&action=authenticate"
+    url = get_url('auth', 'authenticate')
     data = {
         'user_name': username,
         'user_pass': password,
@@ -31,7 +49,7 @@ def login(session, username, password):
 
 
 def get_event_log(session):
-    url = "http://alarmdealer.com/index.php?mod=eventlog&action=index"
+    url = get_url('eventlog', 'index')
     r = session.get(url)
     soup = BeautifulSoup(r.text)
     table = soup.find('table', attrs={'class': 'listView'})
