@@ -15,6 +15,7 @@ logger.setLevel(logging.DEBUG)
 
 DOMAIN = 'alarmdealer.com'
 
+
 def get_credentials():
     auth = netrc.netrc().authenticators(DOMAIN)
     username, account, password = auth
