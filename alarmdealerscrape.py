@@ -15,6 +15,11 @@ logger.setLevel(logging.DEBUG)
 
 DOMAIN = 'alarmdealer.com'
 
+EVENT_LOG_HEADERS = [
+    'Received', 'System', 'Signal', 'SIA Code', 'Partition', 'Extra',
+    'Zone/User'
+]
+
 
 def get_credentials():
     auth = netrc.netrc().authenticators(DOMAIN)
@@ -55,7 +60,7 @@ def get_event_log(session):
     soup = BeautifulSoup(r.text)
     table = soup.find('table', attrs={'class': 'listView'})
     headers = [th.text for th in table.find_all('th')]
-    assert headers == ['Received', 'System', 'Signal', 'Event', 'Zone/User']
+    assert headers == EVENT_LOG_HEADERS, "headers(%s) have changed" % headers
     trs = table.find_all('tr')
     events = []
     for tr in trs[1:]:
@@ -68,6 +73,7 @@ def get_event_log(session):
 
 def output_as_csv(events):
     writer = csv.writer(sys.stdout)
+    writer.writerow(EVENT_LOG_HEADERS)
     writer.writerows(events)
 
 
