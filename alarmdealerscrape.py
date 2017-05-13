@@ -32,11 +32,11 @@ def get_url(mod, action):
 
     ex:
     >>> get_url('auth', 'login')
-    'http://alarmdealer.com/index.php?action=login&mod=auth'
+    'https://alarmdealer.com/index.php?action=login&mod=auth'
 
     """
     query = urlencode({'mod': mod, 'action': action})
-    parts = ('http', DOMAIN, 'index.php', query, '')
+    parts = ('https', DOMAIN, 'index.php', query, '')
     url = urlunsplit(parts)
     return url
 
