@@ -17,7 +17,7 @@ DOMAIN = 'alarmdealer.com'
 
 EVENT_LOG_HEADERS = [
     'Received', 'System', 'Signal', 'SIA Code', 'Partition', 'Extra',
-    'Zone/User'
+    'Zone/User', 'Relay Status'
 ]
 
 
