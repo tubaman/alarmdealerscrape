@@ -41,40 +41,46 @@ def get_url(mod, action):
     return url
 
 
-def login(session, username, password):
-    url = get_url('auth', 'login')
-    r = session.get(url)
-    assert "Customer Login" in r.text
-    url = get_url('auth', 'authenticate')
-    data = {
-        'user_name': username,
-        'user_pass': password,
-    }
-    r = session.post(url, data)
-    assert "Event Log" in r.text
-
-
-def get_event_log(session):
-    url = get_url('eventlog', 'index')
-    r = session.get(url)
-    soup = BeautifulSoup(r.text)
-    table = soup.find('table', attrs={'class': 'listView'})
-    headers = [th.text for th in table.find_all('th')]
-    assert headers == EVENT_LOG_HEADERS, "headers(%s) have changed" % headers
-    trs = table.find_all('tr')
-    events = []
-    for tr in trs[1:]:
-        tds = tr.find_all('td')
-        values = [td.text.strip() for td in tds]
-        assert len(values) == len(headers)
-        events.append(values)
-    return events
-
-
 def output_as_csv(events):
     writer = csv.writer(sys.stdout)
     writer.writerow(EVENT_LOG_HEADERS)
     writer.writerows(events)
+
+
+class AlarmDealerClient(object):
+
+    def __init__(self):
+        self.session = requests.Session()
+
+    def login(self, username, password):
+        self.username = username
+        self.password = password
+        url = get_url('auth', 'login')
+        r = self.session.get(url)
+        assert "Customer Login" in r.text
+        url = get_url('auth', 'authenticate')
+        data = {
+            'user_name': username,
+            'user_pass': password,
+        }
+        r = self.session.post(url, data)
+        assert "Event Log" in r.text
+
+    def get_event_log(self):
+        url = get_url('eventlog', 'index')
+        r = self.session.get(url)
+        soup = BeautifulSoup(r.text)
+        table = soup.find('table', attrs={'class': 'listView'})
+        headers = [th.text for th in table.find_all('th')]
+        assert headers == EVENT_LOG_HEADERS, "headers(%s) have changed" % headers
+        trs = table.find_all('tr')
+        events = []
+        for tr in trs[1:]:
+            tds = tr.find_all('td')
+            values = [td.text.strip() for td in tds]
+            assert len(values) == len(headers)
+            events.append(values)
+        return events
 
 
 def main(argv=None):
@@ -82,9 +88,9 @@ def main(argv=None):
         argv = sys.argv
 
     username, password = get_credentials()
-    session = requests.Session()
-    login(session, username, password)
-    events = get_event_log(session)
+    client = AlarmDealerClient()
+    client.login(username, password)
+    events = client.get_event_log()
     output_as_csv(events)
 
 
