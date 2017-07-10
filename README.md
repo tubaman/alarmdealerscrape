@@ -1,4 +1,4 @@
-# alarmdealerscrape #
+# alarmdealerscrape
 
 Scrape info from [http://alarmdealer.com](http://alarmdealer.com)
 
@@ -8,8 +8,12 @@ Scrape info from [http://alarmdealer.com](http://alarmdealer.com)
    2. `pip install -r requirements.txt`
    3. Put your alarmdealer.com username and password in `~/.netrc` like this:
 
-    machine alarmdealer.com login myusername password mypassword
+    machine alarmdealer.com login myusername account mycode password mypassword
 
-## Run
+## Get Alarm Events
 
-`python alarmdealerscrape.py`
+`python getevents.py`
+
+## Test Arm/Disarm
+
+`python test_arm_disarm.py`
