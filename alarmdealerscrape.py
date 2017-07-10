@@ -1,64 +1,57 @@
 #!/usr/bin/env python
 import logging
 import sys
-import netrc
 import csv
+import re
+import ssl
+import json
+import time
 from urlparse import urlunsplit
 from urllib import urlencode
 
 import requests
+import websocket
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-
-DOMAIN = 'alarmdealer.com'
-
-EVENT_LOG_HEADERS = [
-    'Received', 'System', 'Signal', 'SIA Code', 'Partition', 'Extra',
-    'Zone/User', 'Relay Status'
-]
-
-
-def get_credentials():
-    auth = netrc.netrc().authenticators(DOMAIN)
-    username, account, password = auth
-    return username, password
-
-
-def get_url(mod, action):
-    """Generate a URL given the query params
-
-    ex:
-    >>> get_url('auth', 'login')
-    'https://alarmdealer.com/index.php?action=login&mod=auth'
-
-    """
-    query = urlencode({'mod': mod, 'action': action})
-    parts = ('https', DOMAIN, 'index.php', query, '')
-    url = urlunsplit(parts)
-    return url
-
-
-def output_as_csv(events):
-    writer = csv.writer(sys.stdout)
-    writer.writerow(EVENT_LOG_HEADERS)
-    writer.writerows(events)
+logger.setLevel(logging.WARN)
 
 
 class AlarmDealerClient(object):
 
+    DOMAIN = 'alarmdealer.com'
+    WEBSOCKET_PORT = 8800
+
+    EVENT_LOG_HEADERS = [
+        'Received', 'System', 'Signal', 'SIA Code', 'Partition', 'Extra',
+        'Zone/User', 'Relay Status'
+    ]
+
     def __init__(self):
         self.session = requests.Session()
+        self.ws = None
+
+    @classmethod
+    def get_url(cls, mod, action):
+        """Generate a URL given the query params
+
+        ex:
+        >>> get_url('auth', 'login')
+        'https://alarmdealer.com/index.php?action=login&mod=auth'
+
+        """
+        query = urlencode({'mod': mod, 'action': action})
+        parts = ('https', cls.DOMAIN, 'index.php', query, '')
+        url = urlunsplit(parts)
+        return url
 
     def login(self, username, password):
         self.username = username
         self.password = password
-        url = get_url('auth', 'login')
+        url = self.get_url('auth', 'login')
         r = self.session.get(url)
         assert "Customer Login" in r.text
-        url = get_url('auth', 'authenticate')
+        url = self.get_url('auth', 'authenticate')
         data = {
             'user_name': username,
             'user_pass': password,
@@ -67,12 +60,12 @@ class AlarmDealerClient(object):
         assert "Event Log" in r.text
 
     def get_event_log(self):
-        url = get_url('eventlog', 'index')
+        url = self.get_url('eventlog', 'index')
         r = self.session.get(url)
         soup = BeautifulSoup(r.text)
         table = soup.find('table', attrs={'class': 'listView'})
         headers = [th.text for th in table.find_all('th')]
-        assert headers == EVENT_LOG_HEADERS, "headers(%s) have changed" % headers
+        assert headers == self.EVENT_LOG_HEADERS, "headers(%s) have changed" % headers
         trs = table.find_all('tr')
         events = []
         for tr in trs[1:]:
@@ -82,17 +75,87 @@ class AlarmDealerClient(object):
             events.append(values)
         return events
 
+    def _get_websocket_login_info(self):
+        url = self.get_url('devices', 'keypad')
+        r = self.session.get(url)
+        soup = BeautifulSoup(r.text)
 
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv
+        var_text = soup.find(text=re.compile("window.username"))
+        var_lines = [l.strip() for l in var_text.strip().splitlines()]
+        vars = [re.match('^window\.([^ ]+) = "([^"]*)";$', l).groups() for l in var_lines]
+        info = dict(vars)
+        return info['username'], info['epass'], info['user_type']
 
-    username, password = get_credentials()
-    client = AlarmDealerClient()
-    client.login(username, password)
-    events = client.get_event_log()
-    output_as_csv(events)
+    def _get_websocket(self):
+        if self.ws is None:
+            logger.debug("ws is None so setting up")
+            username, epass, user_type = self._get_websocket_login_info()
+            url = "wss://%s:%d/ws" % (self.DOMAIN, self.WEBSOCKET_PORT)
+            self.ws = AlarmDealerWebSocket(url)
+            self.ws.connect()
+            self.ws.login(username, epass, user_type)
+        else:
+            logger.debug("returning existing ws")
+        return self.ws
+
+    def get_status(self):
+        ws = self._get_websocket()
+        result = ws.send("send_cmd", cmd="status")
+        try:
+            data = json.loads(result['data'])
+        except ValueError:
+            status = None
+        else:
+            status = ' '.join([data['LCD_L1'], data['LCD_L2']])
+        return status
+
+    def wait_for_status(self, expected_status):
+        while True:
+            status = self.get_status()
+            if status and re.search(expected_status, status, re.IGNORECASE):
+                return status
+            time.sleep(1)
+
+    def arm_stay(self):
+        ws = self._get_websocket()
+        ws.send("send_cmd", cmd="s")
+
+    def arm_away(self):
+        ws = self._get_websocket()
+        ws.send("send_cmd", cmd="a")
+
+    def disarm(self, code):
+        ws = self._get_websocket()
+        for digit in code:
+            logger.debug("disarm sending digit: %r", digit)
+            result = ws.send("send_cmd", cmd=digit)
+            logger.debug("disarm send digit result: %r", result)
+            time.sleep(1)
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+class AlarmDealerWebSocket(object):
+
+    def __init__(self, url):
+        self.url = url
+        logger.debug("url: %s", self.url)
+
+    def connect(self):
+        self.ws = websocket.create_connection(self.url, sslopt={"cert_reqs": ssl.CERT_NONE})
+        logger.debug("ws: %s", self.ws)
+
+    def close(self):
+        self.ws.close()
+
+    def login(self, username, epass, user_type):
+        result = self.send("login", username=username, epass=epass, pass_hashed="true", user_type=user_type)
+        assert result['msg'] == 'Logged in successfully'
+
+    def send(self, action, **input):
+        text = json.dumps({"action": action, "input": input})
+        logger.debug("send: %s", text)
+        self.ws.send(text)
+        result = self.ws.recv()
+        logger.debug("recv: %s", result)
+        data = json.loads(result)
+        assert data['status'] == "OK"
+        return data
