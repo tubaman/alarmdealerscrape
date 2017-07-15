@@ -56,6 +56,7 @@ class AlarmDealerClient(object):
         }
         r = self.session.post(url, data)
         assert "Event Log" in r.text
+        self.ws = None  # now we need to reestablish the websocket
 
     def get_event_log(self):
         url = self.get_url('eventlog', 'index')
@@ -63,7 +64,8 @@ class AlarmDealerClient(object):
         soup = BeautifulSoup(r.text)
         table = soup.find('table', attrs={'class': 'listView'})
         headers = [th.text for th in table.find_all('th')]
-        assert headers == self.EVENT_LOG_HEADERS, "headers(%s) have changed" % headers
+        assert headers == self.EVENT_LOG_HEADERS, \
+            "headers(%s) have changed" % headers
         trs = table.find_all('tr')
         events = []
         for tr in trs[1:]:
@@ -84,7 +86,7 @@ class AlarmDealerClient(object):
 
         var_text = soup.find(text=re.compile("window.username"))
         var_lines = [l.strip() for l in var_text.strip().splitlines()]
-        vars = [re.match('^window\.([^ ]+) = "([^"]*)";$', l).groups() \
+        vars = [re.match('^window\.([^ ]+) = "([^"]*)";$', l).groups()
                 for l in var_lines]
         info = dict(vars)
         return info['username'], info['epass'], info['user_type']

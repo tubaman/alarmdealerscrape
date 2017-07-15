@@ -29,14 +29,8 @@ def main(argv=None):
     print "waiting 5 secs"
     time.sleep(5)
 
-    #print "waiting until system armed"
-    #client.wait_for_status("System Armed")
-
     print "disarming"
     client.disarm(code)
-
-    #print "waiting until system disarmed"
-    #client.wait_for_status("System Disarmed")
 
     print "waiting until ready to arm"
     client.wait_for_status("System is Ready to Arm")
