@@ -46,8 +46,6 @@ class AlarmDealerClient(object):
         return url
 
     def login(self, username, password):
-        self.username = username
-        self.password = password
         url = self.get_url('auth', 'login')
         r = self.session.get(url)
         assert "Customer Login" in r.text
