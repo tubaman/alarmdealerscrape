@@ -14,25 +14,25 @@ def main(argv=None):
 
     client = AlarmDealerClient()
 
-    print "logging in"
+    print("logging in")
     client.login(username, password)
 
-    print "waiting until ready to arm"
+    print("waiting until ready to arm")
     client.wait_for_status("System is Ready to Arm")
 
-    print "arming"
+    print("arming")
     client.arm_stay()
 
-    print "waiting until exit delay"
+    print("waiting until exit delay")
     client.wait_for_status("Exit Delay in Progress")
 
-    print "waiting 5 secs"
+    print("waiting 5 secs")
     time.sleep(5)
 
-    print "disarming"
+    print("disarming")
     client.disarm(code)
 
-    print "waiting until ready to arm"
+    print("waiting until ready to arm")
     client.wait_for_status("System is Ready to Arm")
 
 
