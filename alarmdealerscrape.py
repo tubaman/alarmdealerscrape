@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import logging
 import sys
 import csv
@@ -6,8 +5,12 @@ import re
 import ssl
 import json
 import time
-from urlparse import urlunsplit
-from urllib import urlencode
+
+if sys.version_info >= (3, 0):
+    from urllib.parse import urlencode, urlunsplit
+else:
+	from urlparse import urlunsplit
+	from urllib import urlencode
 
 import requests
 import websocket
@@ -61,7 +64,7 @@ class AlarmDealerClient(object):
     def get_event_log(self):
         url = self.get_url('eventlog', 'index')
         r = self.session.get(url)
-        soup = BeautifulSoup(r.text)
+        soup = BeautifulSoup(r.text, "html.parser")
         table = soup.find('table', attrs={'class': 'listView'})
         headers = [th.text for th in table.find_all('th')]
         assert headers == self.EVENT_LOG_HEADERS, \
@@ -82,7 +85,7 @@ class AlarmDealerClient(object):
         """
         url = self.get_url('devices', 'keypad')
         r = self.session.get(url)
-        soup = BeautifulSoup(r.text)
+        soup = BeautifulSoup(r.text, "html.parser")
 
         var_text = soup.find(text=re.compile("window.username"))
         var_lines = [l.strip() for l in var_text.strip().splitlines()]
