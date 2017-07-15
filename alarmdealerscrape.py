@@ -76,17 +76,26 @@ class AlarmDealerClient(object):
         return events
 
     def _get_websocket_login_info(self):
+        """The login info for the websocket is embedded in a script tag
+        on the page.  Find that stuff here.
+
+        """
         url = self.get_url('devices', 'keypad')
         r = self.session.get(url)
         soup = BeautifulSoup(r.text)
 
         var_text = soup.find(text=re.compile("window.username"))
         var_lines = [l.strip() for l in var_text.strip().splitlines()]
-        vars = [re.match('^window\.([^ ]+) = "([^"]*)";$', l).groups() for l in var_lines]
+        vars = [re.match('^window\.([^ ]+) = "([^"]*)";$', l).groups() \
+                for l in var_lines]
         info = dict(vars)
         return info['username'], info['epass'], info['user_type']
 
     def _get_websocket(self):
+        """Return the existing AlarmDealerWebSocket or create one and return
+        it.
+
+        """
         if self.ws is None:
             logger.debug("ws is None so setting up")
             username, epass, user_type = self._get_websocket_login_info()
@@ -134,20 +143,27 @@ class AlarmDealerClient(object):
 
 
 class AlarmDealerWebSocket(object):
+    """Part of http://alarmdealer.com does stuff via websocket
+
+    This is meant to be used as a part of something like AlarmDealerClient.
+
+    """
 
     def __init__(self, url):
         self.url = url
         logger.debug("url: %s", self.url)
 
     def connect(self):
-        self.ws = websocket.create_connection(self.url, sslopt={"cert_reqs": ssl.CERT_NONE})
+        ssl_opt = {"cert_reqs": ssl.CERT_NONE}
+        self.ws = websocket.create_connection(self.url, sslopt=ssl_opt)
         logger.debug("ws: %s", self.ws)
 
     def close(self):
         self.ws.close()
 
     def login(self, username, epass, user_type):
-        result = self.send("login", username=username, epass=epass, pass_hashed="true", user_type=user_type)
+        result = self.send("login", username=username, epass=epass,
+                           pass_hashed="true", user_type=user_type)
         assert result['msg'] == 'Logged in successfully'
 
     def send(self, action, **input):
