@@ -6,7 +6,12 @@ import re
 import ssl
 import json
 import time
-from urllib.parse import urlencode, urlunsplit
+
+if sys.version_info >= (3, 0):
+    from urllib.parse import urlencode, urlunsplit
+else:
+	from urlparse import urlunsplit
+	from urllib import urlencode
 
 import requests
 import websocket
