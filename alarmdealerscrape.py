@@ -155,6 +155,9 @@ class AlarmDealerWebSocket(object):
     def __init__(self, url):
         self.url = url
         logger.debug("url: %s", self.url)
+        self.username = None
+        self.epass = None
+        self.user_type = None
 
     def connect(self):
         ssl_opt = {"cert_reqs": ssl.CERT_NONE}
@@ -164,16 +167,29 @@ class AlarmDealerWebSocket(object):
     def close(self):
         self.ws.close()
 
-    def login(self, username, epass, user_type):
-        result = self.send("login", username=username, epass=epass,
-                           pass_hashed="true", user_type=user_type)
+    def login(self, username=None, epass=None, user_type=None):
+        if username is not None:
+            self.username = username
+        if epass is not None:
+            self.epass = epass
+        if user_type is not None:
+            self.user_type = user_type
+        result = self.send("login", username=self.username, epass=self.epass,
+                           pass_hashed="true", user_type=self.user_type)
         assert result['msg'] == 'Logged in successfully'
 
     def send(self, action, **input):
         text = json.dumps({"action": action, "input": input})
         logger.debug("send: %s", text)
-        self.ws.send(text)
-        result = self.ws.recv()
+        try:
+            self.ws.send(text)
+            result = self.ws.recv()
+        except websocket._exceptions.WebSocketConnectionClosedException:
+            logger.debug("websocket closed.  reconnecting")
+            self.connect()
+            self.login()
+            self.ws.send(text)
+            result = self.ws.recv()
         logger.debug("recv: %s", result)
         data = json.loads(result)
         assert data['status'] == "OK"

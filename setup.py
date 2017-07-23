@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 
 long_desc = open('README.md').read()
 
 setup(name='alarmdealerscrape',
-    version='1.0',
+    version='1.0.1',
     description='scraper for alarmdealer.com',
     long_description=long_desc,
     py_modules=('alarmdealerscrape',),
