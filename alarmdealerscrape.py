@@ -6,11 +6,11 @@ import ssl
 import json
 import time
 
-if sys.version_info >= (3, 0):
+try:
     from urllib.parse import urlencode, urlunsplit
-else:
-	from urlparse import urlunsplit
-	from urllib import urlencode
+except ImportError:
+    from urlparse import urlunsplit
+    from urllib import urlencode
 
 import requests
 import websocket
