@@ -18,7 +18,7 @@ import websocket
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARN)
+logger.setLevel(logging.DEBUG)
 
 
 class AlarmDealerClient(object):
@@ -33,6 +33,8 @@ class AlarmDealerClient(object):
 
     def __init__(self):
         self.session = requests.Session()
+        self.username = None
+        self.password = None
         self.ws = None
 
     @classmethod
@@ -49,14 +51,18 @@ class AlarmDealerClient(object):
         url = urlunsplit(parts)
         return url
 
-    def login(self, username, password):
+    def login(self, username=None, password=None):
+        if username:
+            self.username = username
+        if password:
+            self.password = password
         url = self.get_url('auth', 'login')
         r = self.session.get(url)
         assert "Customer Login" in r.text
         url = self.get_url('auth', 'authenticate')
         data = {
-            'user_name': username,
-            'user_pass': password,
+            'user_name': self.username,
+            'user_pass': self.password,
         }
         r = self.session.post(url, data)
         assert "Event Log" in r.text
@@ -161,7 +167,7 @@ class AlarmDealerWebSocket(object):
 
     def __init__(self, url):
         self.url = url
-        logger.debug("url: %s", self.url)
+        logger.debug("url: %r", self.url)
         self.username = None
         self.epass = None
         self.user_type = None
@@ -169,7 +175,7 @@ class AlarmDealerWebSocket(object):
     def connect(self):
         ssl_opt = {"cert_reqs": ssl.CERT_NONE}
         self.ws = websocket.create_connection(self.url, sslopt=ssl_opt)
-        logger.debug("ws: %s", self.ws)
+        logger.debug("ws: %r", self.ws)
 
     def close(self):
         self.ws.close()
@@ -187,17 +193,17 @@ class AlarmDealerWebSocket(object):
 
     def send(self, action, **input):
         text = json.dumps({"action": action, "input": input})
-        logger.debug("send: %s", text)
+        logger.debug("send: %r", text)
         try:
             self.ws.send(text)
             result = self.ws.recv()
-        except (websocket._exceptions.WebSocketConnectionClosedException, socket.error), e:
+        except (websocket._exceptions.WebSocketConnectionClosedException, socket.error):
             logger.debug("websocket closed.  reconnecting")
             self.connect()
             self.login()
             self.ws.send(text)
             result = self.ws.recv()
-        logger.debug("recv: %s", result)
+        logger.debug("recv: %r", result)
         data = json.loads(result)
         assert data['status'] == "OK"
         return data
