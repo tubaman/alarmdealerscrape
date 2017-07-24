@@ -5,6 +5,7 @@ import re
 import ssl
 import json
 import time
+import socket
 
 try:
     from urllib.parse import urlencode, urlunsplit
@@ -61,6 +62,10 @@ class AlarmDealerClient(object):
         assert "Event Log" in r.text
         self.ws = None  # now we need to reestablish the websocket
 
+    def logout(self):
+        if self.ws:
+            self.ws.close()
+
     def get_event_log(self):
         url = self.get_url('eventlog', 'index')
         r = self.session.get(url)
@@ -112,14 +117,16 @@ class AlarmDealerClient(object):
 
     def get_status(self):
         ws = self._get_websocket()
-        result = ws.send("send_cmd", cmd="status")
-        try:
-            data = json.loads(result['data'])
-        except ValueError:
-            status = None
-        else:
-            status = ' '.join([data['LCD_L1'], data['LCD_L2']])
-        return status
+        while True:
+            result = ws.send("send_cmd", cmd="status")
+            try:
+                data = json.loads(result['data'])
+            except ValueError:
+                time.sleep(0.500)
+                continue
+            else:
+                status = ' '.join([data['LCD_L1'], data['LCD_L2']])
+                return status
 
     def wait_for_status(self, expected_status):
         while True:
@@ -184,7 +191,7 @@ class AlarmDealerWebSocket(object):
         try:
             self.ws.send(text)
             result = self.ws.recv()
-        except websocket._exceptions.WebSocketConnectionClosedException:
+        except (websocket._exceptions.WebSocketConnectionClosedException, socket.error), e:
             logger.debug("websocket closed.  reconnecting")
             self.connect()
             self.login()
