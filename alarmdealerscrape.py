@@ -18,7 +18,7 @@ import websocket
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARN)
 
 
 class AlarmDealerClient(object):
