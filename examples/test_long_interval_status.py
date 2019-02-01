@@ -19,19 +19,19 @@ def main(argv=None):
     client.login(username, password)
 
     print("getting status")
-    print client.get_status()
+    print(client.get_status())
 
     print("waiting 60 secs between status checks")
     time.sleep(60)
 
     print("getting status")
-    print client.get_status()
+    print(client.get_status())
 
     print("waiting 120 secs between status checks")
     time.sleep(120)
 
     print("getting status")
-    print client.get_status()
+    print(client.get_status())
 
 
 if __name__ == '__main__':

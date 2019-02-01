@@ -5,14 +5,14 @@ from setuptools import setup
 long_desc = open('README.md').read()
 
 setup(name='alarmdealerscrape',
-    version='1.0.2',
+    version='1.0.3',
     description='scraper for alarmdealer.com',
     long_description=long_desc,
     py_modules=('alarmdealerscrape',),
     install_requires=[
-        'beautifulsoup4',
-        'requests>=2.2',
-        'websocket-client>=0.44',
+        'beautifulsoup4==4.7.1',
+        'requests==2.21.0',
+        'websocket-client==0.54.0',
     ],
     license='BSD',
     author='Ryan Nowakowski',
