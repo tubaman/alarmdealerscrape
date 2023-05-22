@@ -11,7 +11,7 @@ setup(name='alarmdealerscrape',
     py_modules=('alarmdealerscrape',),
     install_requires=[
         'beautifulsoup4==4.7.1',
-        'requests==2.21.0',
+        'requests==2.31.0',
         'websocket-client==0.54.0',
     ],
     license='BSD',
